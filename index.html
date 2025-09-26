@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Arbeits- & Fahrzeiten – Onepager (Bootstrap 5.3.3, Opt-In Cookies)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Bootstrap 5.3.3 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+
+  <style>
+    /* Kleine UX-Verbesserungen */
+    body { background: #f8f9fa; }
+    .day-card { border-radius: 1rem; }
+    .client-card { border-left: 4px solid #0d6efd; }
+    .sticky-footer {
+      position: sticky;
+      bottom: 0;
+      background: rgba(248,249,250,0.95);
+      backdrop-filter: blur(4px);
+      border-top: 1px solid #dee2e6;
+      z-index: 1020;
+    }
+    .form-hint { font-size: .9rem; color: #6c757d; }
+    .btn-icon {
+      width: 2.25rem; height: 2.25rem; display: inline-flex; align-items: center; justify-content: center; padding: 0;
+    }
+    /* Druckansicht simpel */
+    @media print {
+      .no-print { display: none !important; }
+      .day-card { break-inside: avoid; }
+    }
+  </style>
+
+  <!--
+    Rechtlicher/technischer Hinweis:
+    - Opt-In: Es wird NUR gespeichert, wenn der Nutzer aktiv "Speichern in Cookies erlauben" anhakt.
+    - Consent-Cookie: "arbeitszeiten_consent" mit Wert "1" (erlaubt) oder "0"/kein Cookie (verboten).
+    - Daten-Cookie: "arbeitszeiten_data" enthält JSON (max. ~4KB, Cookie-Limit).
+    - Entfernt der Nutzer den Haken, werden die gespeicherten Daten SOFORT gelöscht.
+    - Autosave: Bei jeder Änderung – aber nur mit erteiltem Consent. Zusätzlich manueller "Jetzt speichern"-Button.
+  -->
+</head>
+<body>
+  <header class="py-4 mb-3 border-bottom bg-white">
+    <div class="container">
+      <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+        <div>
+          <h1 class="h3 mb-1">Arbeits- & Fahrzeiten erfassen</h1>
+          <p class="mb-0 text-muted">Trackingtool um Arbeitszeit zu erfassenIn</p>
+        </div>
+        <div class="d-flex gap-2 no-print">
+          <button id="btnAddDay" type="button" class="btn btn-primary">
+            + Tag hinzufügen
+          </button>
+          <button id="btnSave" type="button" class="btn btn-outline-secondary" title="Manuell speichern">
+            Jetzt speichern
+          </button>
+          <button id="btnClearAll" type="button" class="btn btn-outline-danger" title="Alle Daten und Cookie löschen">
+            Alles löschen
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container pb-5">
+    <form id="timeForm" class="mb-5">
+      <div id="daysContainer" class="d-grid gap-4">
+        <!-- Dynamische Tageskarten werden hier eingefügt -->
+      </div>
+    </form>
+  </main>
+
+  <footer class="sticky-footer py-3">
+    <div class="container d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" value="" id="consent" />
+        <label class="form-check-label" for="consent">
+          Speichern in Cookies erlauben
+        </label>
+      </div>
+      <div class="text-muted form-hint">
+        Änderungen werden nur gespeichert, wenn diese Option aktiv ist.
+      </div>
+    </div>
+  </footer>
+
+  <!-- Templates (werden per JS geklont) -->
+  <template id="dayTemplate">
+    <div class="card shadow-sm day-card">
+      <div class="card-body">
+        <div class="d-flex flex-column flex-lg-row align-items-lg-end gap-3 mb-3">
+          <div class="flex-grow-1">
+            <label class="form-label mb-1">Tag / Datum</label>
+            <input type="date" class="form-control day-date" required>
+          </div>
+          <div class="d-flex gap-2 no-print">
+            <button type="button" class="btn btn-success btnAddClient">
+              + Kunde hinzufügen
+            </button>
+            <button type="button" class="btn btn-outline-danger btnRemoveDay">
+              Tag entfernen
+            </button>
+          </div>
+        </div>
+
+        <div class="clientsContainer d-grid gap-3">
+          <!-- Kundenkarten -->
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <template id="clientTemplate">
+    <div class="card client-card">
+      <div class="card-body">
+        <div class="row g-3 align-items-end">
+          <div class="col-12 col-md-6 col-lg-3">
+            <label class="form-label mb-1">Kunde</label>
+            <input type="text" class="form-control client-name" placeholder="Firmenname / Person" required>
+          </div>
+
+          <div class="col-6 col-md-3 col-lg-2">
+            <label class="form-label mb-1">Abfahrt</label>
+            <input type="time" class="form-control client-abfahrt">
+          </div>
+
+          <div class="col-6 col-md-3 col-lg-2">
+            <label class="form-label mb-1">Ankunft</label>
+            <input type="time" class="form-control client-ankunft">
+          </div>
+
+          <div class="col-6 col-md-3 col-lg-2">
+            <label class="form-label mb-1">Arbeitsbeginn</label>
+            <input type="time" class="form-control client-arbeitsbeginn">
+          </div>
+
+          <div class="col-6 col-md-3 col-lg-2">
+            <label class="form-label mb-1">Arbeitsende</label>
+            <input type="time" class="form-control client-arbeitsende">
+          </div>
+
+          <div class="col-12 col-md-12 col-lg-1 d-flex gap-2 justify-content-start justify-content-lg-end no-print">
+            <button type="button" class="btn btn-outline-secondary btn-icon btnDuplicateClient" title="Eintrag duplizieren" aria-label="Eintrag duplizieren">
+              ⎘
+            </button>
+            <button type="button" class="btn btn-outline-danger btn-icon btnRemoveClient" title="Eintrag entfernen" aria-label="Eintrag entfernen">
+              ✕
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Bootstrap JS (Bundle inkl. Popper) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+  <script>
+    // =========================================
+    // Cookie-Tools
+    // =========================================
+    function setCookie(name, value, days = 365) {
+      const encoded = encodeURIComponent(value);
+      const maxAge = days * 24 * 60 * 60;
+      document.cookie = name + "=" + encoded + "; Max-Age=" + maxAge + "; Path=/; SameSite=Lax";
+    }
+
+    function getCookie(name) {
+      const cookieArr = document.cookie.split(";").map(c => c.trim());
+      for (const c of cookieArr) {
+        if (c.startsWith(name + "=")) {
+          return decodeURIComponent(c.split("=").slice(1).join("="));
+        }
+      }
+      return null;
+    }
+
+    function eraseCookie(name) {
+      document.cookie = name + "=; Max-Age=0; Path=/; SameSite=Lax";
+    }
+
+    const COOKIE_KEY = "arbeitszeiten_data";
+    const CONSENT_KEY = "arbeitszeiten_consent";
+
+    // =========================================
+    // DOM-Referenzen
+    // =========================================
+    const daysContainer = document.getElementById("daysContainer");
+    const dayTemplate = document.getElementById("dayTemplate");
+    const clientTemplate = document.getElementById("clientTemplate");
+    const btnAddDay = document.getElementById("btnAddDay");
+    const btnSave = document.getElementById("btnSave");
+    const btnClearAll = document.getElementById("btnClearAll");
+    const consent = document.getElementById("consent");
+
+    // =========================================
+    // State & Utilities
+    // =========================================
+    function serializeForm() {
+      const days = [];
+      const dayCards = daysContainer.querySelectorAll(".day-card");
+      dayCards.forEach(card => {
+        const dateInput = card.querySelector(".day-date");
+        const clients = [];
+        card.querySelectorAll(".client-card").forEach(cc => {
+          clients.push({
+            kunde: cc.querySelector(".client-name").value || "",
+            abfahrt: cc.querySelector(".client-abfahrt").value || "",
+            ankunft: cc.querySelector(".client-ankunft").value || "",
+            arbeitsbeginn: cc.querySelector(".client-arbeitsbeginn").value || "",
+            arbeitsende: cc.querySelector(".client-arbeitsende").value || ""
+          });
+        });
+        days.push({
+          datum: dateInput.value || "",
+          kunden: clients
+        });
+      });
+      return { days };
+    }
+
+    function populateForm(data) {
+      daysContainer.innerHTML = "";
+      if (!data || !Array.isArray(data.days)) return;
+      data.days.forEach(day => {
+        const dayEl = addDay(day.datum);
+        if (Array.isArray(day.kunden) && day.kunden.length) {
+          const clientsWrap = dayEl.querySelector(".clientsContainer");
+          clientsWrap.innerHTML = "";
+          day.kunden.forEach(k => {
+            addClient(dayEl, k);
+          });
+        }
+      });
+    }
+
+    function allowSaving() {
+      return consent.checked; // Opt-In
+    }
+
+    let saveTimer = null;
+    function scheduleAutosave() {
+      if (!allowSaving()) return;
+      if (saveTimer) window.clearTimeout(saveTimer);
+      saveTimer = window.setTimeout(saveDataToCookie, 300);
+    }
+
+    function saveDataToCookie() {
+      if (!allowSaving()) return;
+      try {
+        const data = serializeForm();
+        const json = JSON.stringify(data);
+        setCookie(COOKIE_KEY, json, 365);
+      } catch (e) {
+        console.error("Speichern fehlgeschlagen:", e);
+      }
+    }
+
+    function loadDataFromCookie() {
+      const json = getCookie(COOKIE_KEY);
+      if (!json) return null;
+      try {
+        return JSON.parse(json);
+      } catch (e) {
+        console.warn("Cookie-Inhalt nicht lesbar, wird ignoriert.");
+        return null;
+      }
+    }
+
+    function setConsentFromCookie() {
+      const v = getCookie(CONSENT_KEY);
+      consent.checked = (v === "1");
+    }
+
+    function persistConsent() {
+      setCookie(CONSENT_KEY, consent.checked ? "1" : "0", 365);
+    }
+
+    // =========================================
+    // UI-Erzeugung
+    // =========================================
+    function addDay(initialDate = "") {
+      const node = dayTemplate.content.cloneNode(true);
+      const card = node.querySelector(".day-card");
+      const dateInput = node.querySelector(".day-date");
+      const btnAddClient = node.querySelector(".btnAddClient");
+      const btnRemoveDay = node.querySelector(".btnRemoveDay");
+
+      if (initialDate) {
+        dateInput.value = initialDate;
+      }
+
+      // Default: einen ersten Kundenblock anlegen
+      addClient(card);
+
+      btnAddClient.addEventListener("click", () => {
+        addClient(card);
+        scheduleAutosave();
+      });
+
+      btnRemoveDay.addEventListener("click", () => {
+        card.remove();
+        scheduleAutosave();
+      });
+
+      dateInput.addEventListener("input", scheduleAutosave);
+
+      daysContainer.appendChild(node);
+      return daysContainer.lastElementChild; // die eben eingefügte Karte
+    }
+
+    function addClient(dayCard, initial = null) {
+      const clientsContainer = dayCard.querySelector(".clientsContainer");
+      const node = clientTemplate.content.cloneNode(true);
+      const clientCard = node.querySelector(".client-card");
+
+      const nameInput = node.querySelector(".client-name");
+      const abfahrtInput = node.querySelector(".client-abfahrt");
+      const ankunftInput = node.querySelector(".client-ankunft");
+      const beginnInput = node.querySelector(".client-arbeitsbeginn");
+      const endeInput = node.querySelector(".client-arbeitsende");
+
+      const btnRemoveClient = node.querySelector(".btnRemoveClient");
+      const btnDuplicateClient = node.querySelector(".btnDuplicateClient");
+
+      if (initial) {
+        nameInput.value = initial.kunde || "";
+        abfahrtInput.value = initial.abfahrt || "";
+        ankunftInput.value = initial.ankunft || "";
+        beginnInput.value = initial.arbeitsbeginn || "";
+        endeInput.value = initial.arbeitsende || "";
+      }
+
+      [nameInput, abfahrtInput, ankunftInput, beginnInput, endeInput].forEach(inp => {
+        inp.addEventListener("input", scheduleAutosave);
+      });
+
+      btnRemoveClient.addEventListener("click", () => {
+        clientCard.remove();
+        scheduleAutosave();
+      });
+
+      btnDuplicateClient.addEventListener("click", () => {
+        const cloneData = {
+          kunde: nameInput.value,
+          abfahrt: abfahrtInput.value,
+          ankunft: ankunftInput.value,
+          arbeitsbeginn: beginnInput.value,
+          arbeitsende: endeInput.value
+        };
+        addClient(dayCard, cloneData);
+        scheduleAutosave();
+      });
+
+      clientsContainer.appendChild(node);
+      return clientsContainer.lastElementChild;
+    }
+
+    // =========================================
+    // Event-Handler
+    // =========================================
+    btnAddDay.addEventListener("click", () => {
+      addDay();
+      scheduleAutosave();
+    });
+
+    btnSave.addEventListener("click", () => {
+      if (!allowSaving()) {
+        alert("Speichern ist deaktiviert. Bitte 'Speichern in Cookies erlauben' aktivieren.");
+        return;
+      }
+      saveDataToCookie();
+      alert("Daten wurden im Cookie gespeichert.");
+    });
+
+    btnClearAll.addEventListener("click", () => {
+      if (!confirm("Wirklich alle Einträge löschen?")) return;
+      daysContainer.innerHTML = "";
+      eraseCookie(COOKIE_KEY);
+      // nach dem Löschen für eine leere Startansicht wieder einen Tag hinzufügen
+      addDay();
+    });
+
+    consent.addEventListener("change", () => {
+      persistConsent();
+      if (!consent.checked) {
+        // Beim Deaktivieren sofort die gespeicherten Daten entfernen
+        eraseCookie(COOKIE_KEY);
+      } else {
+        // Beim Aktivieren direkt den aktuellen Stand speichern
+        saveDataToCookie();
+      }
+    });
+
+    // =========================================
+    // Init
+    // =========================================
+    (function init() {
+      setConsentFromCookie();
+
+      const saved = loadDataFromCookie();
+      if (saved && consent.checked) {
+        populateForm(saved);
+      } else {
+        // Starte mit einem leeren Tag
+        addDay();
+      }
+
+      // Globaler Change-Listener für dynamische Elemente (Fallback)
+      daysContainer.addEventListener("input", scheduleAutosave);
+    })();
+  </script>
+</body>
+</html>
