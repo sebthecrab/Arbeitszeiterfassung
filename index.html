@@ -34,14 +34,6 @@
       .day-card { break-inside: avoid; }
     }
   </style>
-
-  <!--
-    Opt-In: Es wird NUR gespeichert, wenn "Speichern in Cookies erlauben" aktiv ist.
-    Consent-Cookie: "arbeitszeiten_consent" = "1" erlaubt; "0"/nicht vorhanden = verboten.
-    Daten-Cookie: "arbeitszeiten_data" (JSON; Cookie-Limit ~4KB).
-    Pausen: standardmäßig ausgeblendet; erscheinen erst nach Klick auf "+ Pause hinzufügen".
-    Aktionen je Kunde (Duplizieren/Entfernen) sind am Ende der Karte, unterhalb der Pausen.
-  -->
 </head>
 <body>
   <header class="py-4 mb-3 border-bottom bg-white">
@@ -49,7 +41,7 @@
       <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
         <div>
           <h1 class="h3 mb-1">Arbeits- & Fahrzeiten erfassen</h1>
-          <p class="mb-0 text-muted">Onepager mit Bootstrap 5 • Speicherung nur mit Opt-In • Pausen on-demand</p>
+          <p class="mb-0 text-muted">Erfassung der Fahr- und Arbeitszeit</p>
         </div>
         <div class="d-flex gap-2 no-print">
           <button id="btnAddDay" type="button" class="btn btn-primary">
@@ -74,7 +66,7 @@
     </form>
   </main>
 
-  <footer class="sticky-footer py-3">
+  <footer class="py-3">
     <div class="container d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
       <div class="form-check">
         <input class="form-check-input" type="checkbox" value="" id="consent" />
