@@ -2,14 +2,13 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <title>Arbeits- & Fahrzeiten – Onepager (Bootstrap 5.3.3, Opt-In Cookies, Pausen)</title>
+  <title>Arbeits- & Fahrzeiten – Onepager (Bootstrap 5.3.3, Opt-In Cookies, Pausen on-demand)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <!-- Bootstrap 5.3.3 CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
 
   <style>
-    /* Kleine UX-Verbesserungen */
     body { background: #f8f9fa; }
     .day-card { border-radius: 1rem; }
     .client-card { border-left: 4px solid #0d6efd; }
@@ -22,24 +21,27 @@
       z-index: 1020;
     }
     .form-hint { font-size: .9rem; color: #6c757d; }
-    .btn-icon {
-      width: 2.25rem; height: 2.25rem; display: inline-flex; align-items: center; justify-content: center; padding: 0;
-    }
-    .pause-header {
-      display: flex; align-items: center; justify-content: space-between;
-    }
+    .btn-icon { width: 2.25rem; height: 2.25rem; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
     .pause-block {
       background: #f1f3f5;
       border: 1px solid #e9ecef;
       border-radius: .75rem;
       padding: .75rem;
     }
-    /* Druckansicht simpel */
+    .client-actions { border-top: 1px dashed #dee2e6; padding-top: .75rem; }
     @media print {
       .no-print { display: none !important; }
       .day-card { break-inside: avoid; }
     }
   </style>
+
+  <!--
+    Opt-In: Es wird NUR gespeichert, wenn "Speichern in Cookies erlauben" aktiv ist.
+    Consent-Cookie: "arbeitszeiten_consent" = "1" erlaubt; "0"/nicht vorhanden = verboten.
+    Daten-Cookie: "arbeitszeiten_data" (JSON; Cookie-Limit ~4KB).
+    Pausen: standardmäßig ausgeblendet; erscheinen erst nach Klick auf "+ Pause hinzufügen".
+    Aktionen je Kunde (Duplizieren/Entfernen) sind am Ende der Karte, unterhalb der Pausen.
+  -->
 </head>
 <body>
   <header class="py-4 mb-3 border-bottom bg-white">
@@ -47,7 +49,7 @@
       <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
         <div>
           <h1 class="h3 mb-1">Arbeits- & Fahrzeiten erfassen</h1>
-          <p class="mb-0 text-muted">Onepager mit Bootstrap 5 • Speicherung nur mit Opt-In • inkl. Pausen</p>
+          <p class="mb-0 text-muted">Onepager mit Bootstrap 5 • Speicherung nur mit Opt-In • Pausen on-demand</p>
         </div>
         <div class="d-flex gap-2 no-print">
           <button id="btnAddDay" type="button" class="btn btn-primary">
@@ -67,7 +69,7 @@
   <main class="container pb-5">
     <form id="timeForm" class="mb-5">
       <div id="daysContainer" class="d-grid gap-4">
-        <!-- Dynamische Tageskarten werden hier eingefügt -->
+        <!-- Dynamische Tageskarten -->
       </div>
     </form>
   </main>
@@ -86,7 +88,7 @@
     </div>
   </footer>
 
-  <!-- Templates (werden per JS geklont) -->
+  <!-- Templates -->
   <template id="dayTemplate">
     <div class="card shadow-sm day-card">
       <div class="card-body">
@@ -115,53 +117,53 @@
   <template id="clientTemplate">
     <div class="card client-card">
       <div class="card-body">
+        <!-- Grunddaten -->
         <div class="row g-3 align-items-end">
           <div class="col-12 col-md-6 col-lg-3">
             <label class="form-label mb-1">Kunde</label>
             <input type="text" class="form-control client-name" placeholder="Firmenname / Person" required>
           </div>
-
           <div class="col-6 col-md-3 col-lg-2">
             <label class="form-label mb-1">Abfahrt</label>
             <input type="time" class="form-control client-abfahrt">
           </div>
-
           <div class="col-6 col-md-3 col-lg-2">
             <label class="form-label mb-1">Ankunft</label>
             <input type="time" class="form-control client-ankunft">
           </div>
-
           <div class="col-6 col-md-3 col-lg-2">
             <label class="form-label mb-1">Arbeitsbeginn</label>
             <input type="time" class="form-control client-arbeitsbeginn">
           </div>
-
           <div class="col-6 col-md-3 col-lg-2">
             <label class="form-label mb-1">Arbeitsende</label>
             <input type="time" class="form-control client-arbeitsende">
           </div>
+        </div>
 
-          <div class="col-12 col-md-12 col-lg-1 d-flex gap-2 justify-content-start justify-content-lg-end no-print">
-            <button type="button" class="btn btn-outline-secondary btn-icon btnDuplicateClient" title="Eintrag duplizieren" aria-label="Eintrag duplizieren">
-              ⎘
-            </button>
-            <button type="button" class="btn btn-outline-danger btn-icon btnRemoveClient" title="Eintrag entfernen" aria-label="Eintrag entfernen">
-              ✕
-            </button>
+        <!-- Trigger für Pausen (immer sichtbar) -->
+        <div class="d-flex justify-content-start mt-3 no-print">
+          <button type="button" class="btn btn-outline-primary btn-sm btnAddPause">
+            + Pause hinzufügen
+          </button>
+        </div>
+
+        <!-- Pausenbereich (initial verborgen) -->
+        <div class="mt-3 pause-block d-none">
+          <h6 class="mb-2">Pausen</h6>
+          <div class="pausenContainer d-grid gap-2">
+            <!-- Pausen-Reihen -->
           </div>
         </div>
 
-        <!-- Pausen-Bereich -->
-        <div class="mt-3 pause-block">
-          <div class="pause-header mb-2">
-            <h6 class="mb-0">Pausen</h6>
-            <button type="button" class="btn btn-outline-primary btn-sm btnAddPause no-print">
-              + Pause hinzufügen
-            </button>
-          </div>
-          <div class="pausenContainer d-grid gap-2">
-            <!-- Dynamische Pausenreihen -->
-          </div>
+        <!-- Aktionen am Ende der Karte -->
+        <div class="d-flex gap-2 justify-content-end mt-3 no-print client-actions">
+          <button type="button" class="btn btn-outline-secondary btnDuplicateClient" title="Eintrag duplizieren" aria-label="Eintrag duplizieren">
+            ⎘ Eintrag duplizieren
+          </button>
+          <button type="button" class="btn btn-outline-danger btnRemoveClient" title="Eintrag entfernen" aria-label="Eintrag entfernen">
+            ✕ Eintrag entfernen
+          </button>
         </div>
       </div>
     </div>
@@ -183,19 +185,16 @@
     </div>
   </template>
 
-  <!-- Bootstrap JS (Bundle inkl. Popper) -->
+  <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 
   <script>
-    // =========================================
-    // Cookie-Tools
-    // =========================================
+    // ========================= Cookie-Tools =========================
     function setCookie(name, value, days = 365) {
       const encoded = encodeURIComponent(value);
       const maxAge = days * 24 * 60 * 60;
       document.cookie = name + "=" + encoded + "; Max-Age=" + maxAge + "; Path=/; SameSite=Lax";
     }
-
     function getCookie(name) {
       const cookieArr = document.cookie.split(";").map(c => c.trim());
       for (const c of cookieArr) {
@@ -205,7 +204,6 @@
       }
       return null;
     }
-
     function eraseCookie(name) {
       document.cookie = name + "=; Max-Age=0; Path=/; SameSite=Lax";
     }
@@ -213,9 +211,7 @@
     const COOKIE_KEY = "arbeitszeiten_data";
     const CONSENT_KEY = "arbeitszeiten_consent";
 
-    // =========================================
-    // DOM-Referenzen
-    // =========================================
+    // ========================= DOM-Referenzen =========================
     const daysContainer = document.getElementById("daysContainer");
     const dayTemplate = document.getElementById("dayTemplate");
     const clientTemplate = document.getElementById("clientTemplate");
@@ -225,9 +221,7 @@
     const btnClearAll = document.getElementById("btnClearAll");
     const consent = document.getElementById("consent");
 
-    // =========================================
-    // State & Utilities
-    // =========================================
+    // ========================= State & Utilities =========================
     function serializeForm() {
       const days = [];
       const dayCards = daysContainer.querySelectorAll(".day-card");
@@ -235,7 +229,6 @@
         const dateInput = card.querySelector(".day-date");
         const clients = [];
         card.querySelectorAll(".client-card").forEach(cc => {
-          // Pausen ermitteln
           const pauses = [];
           cc.querySelectorAll(".pause-row").forEach(pr => {
             pauses.push({
@@ -243,7 +236,6 @@
               ende: pr.querySelector(".pause-ende").value || ""
             });
           });
-
           clients.push({
             kunde: cc.querySelector(".client-name").value || "",
             abfahrt: cc.querySelector(".client-abfahrt").value || "",
@@ -253,10 +245,7 @@
             pausen: pauses
           });
         });
-        days.push({
-          datum: dateInput.value || "",
-          kunden: clients
-        });
+        days.push({ datum: dateInput.value || "", kunden: clients });
       });
       return { days };
     }
@@ -269,16 +258,12 @@
         if (Array.isArray(day.kunden) && day.kunden.length) {
           const clientsWrap = dayEl.querySelector(".clientsContainer");
           clientsWrap.innerHTML = "";
-          day.kunden.forEach(k => {
-            addClient(dayEl, k);
-          });
+          day.kunden.forEach(k => addClient(dayEl, k));
         }
       });
     }
 
-    function allowSaving() {
-      return consent.checked; // Opt-In
-    }
+    function allowSaving() { return consent.checked; }
 
     let saveTimer = null;
     function scheduleAutosave() {
@@ -301,26 +286,19 @@
     function loadDataFromCookie() {
       const json = getCookie(COOKIE_KEY);
       if (!json) return null;
-      try {
-        return JSON.parse(json);
-      } catch (e) {
-        console.warn("Cookie-Inhalt nicht lesbar, wird ignoriert.");
-        return null;
-      }
+      try { return JSON.parse(json); }
+      catch (e) { console.warn("Cookie-Inhalt nicht lesbar, wird ignoriert."); return null; }
     }
 
     function setConsentFromCookie() {
       const v = getCookie(CONSENT_KEY);
       consent.checked = (v === "1");
     }
-
     function persistConsent() {
       setCookie(CONSENT_KEY, consent.checked ? "1" : "0", 365);
     }
 
-    // =========================================
-    // UI-Erzeugung
-    // =========================================
+    // ========================= UI-Erzeugung =========================
     function addDay(initialDate = "") {
       const node = dayTemplate.content.cloneNode(true);
       const card = node.querySelector(".day-card");
@@ -328,31 +306,30 @@
       const btnAddClient = node.querySelector(".btnAddClient");
       const btnRemoveDay = node.querySelector(".btnRemoveDay");
 
-      if (initialDate) {
-        dateInput.value = initialDate;
-      }
+      if (initialDate) dateInput.value = initialDate;
 
-      // Default: einen ersten Kundenblock anlegen
+      // Start: ein erster Kundenblock
       addClient(card);
 
-      btnAddClient.addEventListener("click", () => {
-        addClient(card);
-        scheduleAutosave();
-      });
-
-      btnRemoveDay.addEventListener("click", () => {
-        card.remove();
-        scheduleAutosave();
-      });
-
+      btnAddClient.addEventListener("click", () => { addClient(card); scheduleAutosave(); });
+      btnRemoveDay.addEventListener("click", () => { card.remove(); scheduleAutosave(); });
       dateInput.addEventListener("input", scheduleAutosave);
 
       daysContainer.appendChild(node);
-      return daysContainer.lastElementChild; // die eben eingefügte Karte
+      return daysContainer.lastElementChild;
+    }
+
+    function ensurePauseBlockVisible(clientCard) {
+      const pauseBlock = clientCard.querySelector(".pause-block");
+      if (pauseBlock.classList.contains("d-none")) {
+        pauseBlock.classList.remove("d-none");
+      }
+      return pauseBlock;
     }
 
     function addPause(clientCard, initial = null) {
-      const pausenContainer = clientCard.querySelector(".pausenContainer");
+      const pauseBlock = ensurePauseBlockVisible(clientCard);
+      const pausenContainer = pauseBlock.querySelector(".pausenContainer");
       const node = pauseTemplate.content.cloneNode(true);
       const row = node.querySelector(".pause-row");
       const beginnInput = node.querySelector(".pause-beginn");
@@ -361,15 +338,16 @@
 
       if (initial) {
         beginnInput.value = initial.beginn || "";
-        endeInput.value = initial.ende || "";
+        endeInput.value  = initial.ende   || "";
       }
 
-      [beginnInput, endeInput].forEach(inp => {
-        inp.addEventListener("input", scheduleAutosave);
-      });
-
+      [beginnInput, endeInput].forEach(inp => inp.addEventListener("input", scheduleAutosave));
       btnRemovePause.addEventListener("click", () => {
         row.remove();
+        // Wenn keine Pausen mehr vorhanden sind, Block wieder ausblenden
+        if (pausenContainer.querySelectorAll(".pause-row").length === 0) {
+          pauseBlock.classList.add("d-none");
+        }
         scheduleAutosave();
       });
 
@@ -382,22 +360,23 @@
       const node = clientTemplate.content.cloneNode(true);
       const clientCard = node.querySelector(".client-card");
 
-      const nameInput = node.querySelector(".client-name");
-      const abfahrtInput = node.querySelector(".client-abfahrt");
-      const ankunftInput = node.querySelector(".client-ankunft");
+      const nameInput   = node.querySelector(".client-name");
+      const abfahrtInput= node.querySelector(".client-abfahrt");
+      const ankunftInput= node.querySelector(".client-ankunft");
       const beginnInput = node.querySelector(".client-arbeitsbeginn");
-      const endeInput = node.querySelector(".client-arbeitsende");
+      const endeInput   = node.querySelector(".client-arbeitsende");
 
       const btnRemoveClient = node.querySelector(".btnRemoveClient");
       const btnDuplicateClient = node.querySelector(".btnDuplicateClient");
       const btnAddPause = node.querySelector(".btnAddPause");
+      const pauseBlock = node.querySelector(".pause-block"); // initially d-none
 
       if (initial) {
-        nameInput.value = initial.kunde || "";
+        nameInput.value    = initial.kunde || "";
         abfahrtInput.value = initial.abfahrt || "";
         ankunftInput.value = initial.ankunft || "";
-        beginnInput.value = initial.arbeitsbeginn || "";
-        endeInput.value = initial.arbeitsende || "";
+        beginnInput.value  = initial.arbeitsbeginn || "";
+        endeInput.value    = initial.arbeitsende || "";
       }
 
       [nameInput, abfahrtInput, ankunftInput, beginnInput, endeInput].forEach(inp => {
@@ -410,10 +389,10 @@
       });
 
       btnDuplicateClient.addEventListener("click", () => {
-        // Pausen des aktuellen Eintrags mitnehmen
+        // Pausen-Daten (nur wenn sichtbar)
         const pausesData = Array.from(clientCard.querySelectorAll(".pause-row")).map(pr => ({
           beginn: pr.querySelector(".pause-beginn").value || "",
-          ende: pr.querySelector(".pause-ende").value || ""
+          ende:   pr.querySelector(".pause-ende").value || ""
         }));
         const cloneData = {
           kunde: nameInput.value,
@@ -435,29 +414,21 @@
       clientsContainer.appendChild(node);
       const appended = clientsContainer.lastElementChild;
 
-      // Pausen initialisieren: entweder übernommene Pausen setzen, sonst eine leere Reihe anbieten
+      // Initial-Pausen laden (falls vorhanden) -> dann Block sichtbar machen und Reihen einsetzen
       if (initial && Array.isArray(initial.pausen) && initial.pausen.length) {
+        pauseBlock.classList.remove("d-none");
         initial.pausen.forEach(p => addPause(appended, p));
-      } else {
-        addPause(appended); // eine leere Pause als Start
       }
+      // Wenn KEINE Initial-Pausen -> nichts tun (Block bleibt verborgen, keine leere Pause anlegen)
 
       return appended;
     }
 
-    // =========================================
-    // Event-Handler
-    // =========================================
-    btnAddDay.addEventListener("click", () => {
-      addDay();
-      scheduleAutosave();
-    });
+    // ========================= Event-Handler =========================
+    btnAddDay.addEventListener("click", () => { addDay(); scheduleAutosave(); });
 
     btnSave.addEventListener("click", () => {
-      if (!allowSaving()) {
-        alert("Speichern ist deaktiviert. Bitte 'Speichern in Cookies erlauben' aktivieren.");
-        return;
-      }
+      if (!allowSaving()) { alert("Speichern ist deaktiviert. Bitte 'Speichern in Cookies erlauben' aktivieren."); return; }
       saveDataToCookie();
       alert("Daten wurden im Cookie gespeichert.");
     });
@@ -466,36 +437,27 @@
       if (!confirm("Wirklich alle Einträge löschen?")) return;
       daysContainer.innerHTML = "";
       eraseCookie(COOKIE_KEY);
-      // nach dem Löschen für eine leere Startansicht wieder einen Tag hinzufügen
-      addDay();
+      addDay(); // für leere Startansicht wieder einen Tag hinzufügen
     });
 
     consent.addEventListener("change", () => {
       persistConsent();
       if (!consent.checked) {
-        // Beim Deaktivieren sofort die gespeicherten Daten entfernen
-        eraseCookie(COOKIE_KEY);
+        eraseCookie(COOKIE_KEY); // sofort löschen, wenn Consent entzogen
       } else {
-        // Beim Aktivieren direkt den aktuellen Stand speichern
-        saveDataToCookie();
+        saveDataToCookie(); // beim Aktivieren direkt speichern
       }
     });
 
-    // =========================================
-    // Init
-    // =========================================
+    // ========================= Init =========================
     (function init() {
       setConsentFromCookie();
-
       const saved = loadDataFromCookie();
       if (saved && consent.checked) {
         populateForm(saved);
       } else {
-        // Starte mit einem leeren Tag
         addDay();
       }
-
-      // Globaler Change-Listener für dynamische Elemente (Fallback)
       daysContainer.addEventListener("input", scheduleAutosave);
     })();
   </script>
